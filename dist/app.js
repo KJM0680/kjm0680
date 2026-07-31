@@ -3,6 +3,7 @@
   const SUPABASE_URL = 'https://wsxlhhyqqzwkkkqqjhju.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Tlw90eRRCwTvTL6pPC94lg_EodjcuFh';
   const db = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
+  let remoteHydrated = false;
   const seedEquipment = [
     ['1A','Warning',8.4,72],['1B','Normal',2.1,45],['1C','Normal',1.8,42],['2A','Normal',1.7,42],['2B','Warning',3.1,41],['2C','Normal',1.9,44],['3A','Normal',1.4,82],['3B','Normal',1.6,86],['3C','Normal',2,45],['4A','Normal',1.7,41],['4B','Normal',2.4,49],['4C','Normal',2.1,45],['5A','Normal',2.2,46],['5B','Normal',1.9,43],['5C','Normal',2,44]
   ].map(([id,status,vibration,temperature]) => ({ id, name: `설비 ${id}`, status, vibration, temperature }));
@@ -37,7 +38,7 @@
     const results=await Promise.all(jobs); const failure=results.find(result=>result.error);
     if(failure) console.error('Supabase 저장 오류',failure.error);
     const syncDeletes=async(table,rows)=>{ const current=new Set(rows.map(row=>row.id)); const existing=await db.from(table).select('id'); if(existing.error) return; const stale=(existing.data||[]).map(row=>row.id).filter(id=>!current.has(id)); if(stale.length) await db.from(table).delete().in('id',stale); };
-    await Promise.all([syncDeletes('equipment',state.equipment),syncDeletes('alerts',state.alerts),syncDeletes('inspections',state.inspections),syncDeletes('materials',state.materials),syncDeletes('spares',state.spares)]);
+    if(remoteHydrated) await Promise.all([syncDeletes('equipment',state.equipment),syncDeletes('alerts',state.alerts),syncDeletes('inspections',state.inspections),syncDeletes('materials',state.materials),syncDeletes('spares',state.spares)]);
   }
   async function hydrateFromSupabase(){
     if(!db) return;
@@ -54,7 +55,7 @@
     if(materials.data?.length) state.materials=materials.data.map(row=>({id:row.id,name:row.name,quantity:Number(row.quantity),dueDate:row.due_date||'',status:row.status}));
     if(spares.data?.length) state.spares=spares.data.map(row=>({id:row.id,name:row.name,quantity:Number(row.quantity),repairStatus:row.repair_status,startDate:row.start_date||'',completedDate:row.completed_date||'',memo:row.memo||''}));
     if(monitor.data?.length) state.spareMonitor=Object.fromEntries(monitor.data.map(row=>[row.key,Number(row.value)||0]));
-    localStorage.setItem(KEY,JSON.stringify(state)); render();
+    localStorage.setItem(KEY,JSON.stringify(state)); remoteHydrated=true; render();
     if(localHadData && !(materials.data?.length||spares.data?.length||inspections.data?.length)) void persistState();
     toast('Supabase 데이터와 연결되었습니다.');
   }
