@@ -1,0 +1,12 @@
+const fs = require('fs');
+const path = require('path');
+const appPath = path.join(__dirname, '..', 'dist', 'app.js');
+let app = fs.readFileSync(appPath, 'utf8');
+app = app.replace('materials:[], spares:[], mapFilter:', "materials:[], spares:[], spareMonitor:{completed:0,progress:0,needed:0}, mapFilter:");
+app = app.replace("spares:Array.isArray(saved.spares)?saved.spares:[]}", "spares:Array.isArray(saved.spares)?saved.spares:[],spareMonitor:saved.spareMonitor&&typeof saved.spareMonitor==='object'?{completed:Number(saved.spareMonitor.completed)||0,progress:Number(saved.spareMonitor.progress)||0,needed:Number(saved.spareMonitor.needed)||0}:{completed:0,progress:0,needed:0}}");
+const oldParser = /function parseSparesCsv\(text\)\{.*?\n/;
+const newParser = "function parseSparesCsv(text){ return text.split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean).map(line=>{ const parts=line.split(',').map(value=>value.trim()); if(parts[0]==='예비품명'||!parts[0]) return null; const quantity=Number(parts[1]); const repairStatus=parts[2]||'수리 필요'; return Number.isFinite(quantity)?{name:parts[0],quantity,repairStatus,startDate:parts[3]||'',completedDate:parts[4]||'',memo:parts.slice(5).join(',')}:null; }).filter(Boolean); }\n";
+app = app.replace(oldParser, newParser);
+const statusAnchor = "  function statusClass(status){ return `status-${status.toLowerCase()}`; }";
+if (!app.includes('function sortByLatestDate')) app = app.replace(statusAnchor, `${statusAnchor}\n  function sortByLatestDate(rows,getDate){ return [...rows].sort((a,b)=>{ const ad=getDate(a)||''; const bd=getDate(b)||''; if(!ad&&!bd)return 0; if(!ad)return 1; if(!bd)return -1; return bd.localeCompare(ad); }); }`);
+fs.writeFileSync(appPath, app);
