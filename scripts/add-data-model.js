@@ -1,0 +1,13 @@
+const fs = require('fs');
+const path = require('path');
+const appPath = path.join(__dirname, '..', 'dist', 'app.js');
+let app = fs.readFileSync(appPath, 'utf8');
+const freshAnchor = "const freshState = () => ({ view:'dashboard', equipment:seedEquipment.map(x => ({...x})), alerts:seedAlerts.map(x => ({...x})), inspections:[], mapFilter:'All', selectedMapId:null, prepStarted:false });";
+const freshReplacement = "const freshState = () => ({ view:'dashboard', equipment:seedEquipment.map(x => ({...x})), alerts:seedAlerts.map(x => ({...x})), inspections:[], materials:[], spares:[], mapFilter:'All', selectedMapId:null, prepStarted:false });";
+if (app.includes(freshAnchor)) app = app.replace(freshAnchor, freshReplacement);
+const loadAnchor = "return saved?.equipment && saved?.alerts ? {...freshState(),...saved} : freshState();";
+if (app.includes(loadAnchor)) app = app.replace(loadAnchor, "return saved?.equipment && saved?.alerts ? {...freshState(),...saved,materials:Array.isArray(saved.materials)?saved.materials:[],spares:Array.isArray(saved.spares)?saved.spares:[]} : freshState();");
+const marker = "  function statusClass(status){ return `status-${status.toLowerCase()}`; }";
+const additions = `${marker}\n  function parseMaterialsCsv(text){ return text.split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean).map(line=>{ const parts=line.split(',').map(value=>value.trim()); if(parts[0]==='자재명'||!parts[0]) return null; const quantity=Number(parts[1]); const status=parts[3]==='입고완료'?'received':'purchasing'; return Number.isFinite(quantity)?{name:parts[0],quantity,dueDate:parts[2]||'',status}:null; }).filter(Boolean); }\n  function parseSparesCsv(text){ return text.split(/\\r?\\n/).map(line=>line.trim()).filter(Boolean).map(line=>{ const parts=line.split(',').map(value=>value.trim()); if(parts[0]==='예비품명'||!parts[0]) return null; const quantity=Number(parts[1]); const repairStatus=parts[2]||'수리 필요'; return Number.isFinite(quantity)?{name:parts[0],quantity,repairStatus,memo:parts.slice(3).join(',')}:null; }).filter(Boolean); }`;
+if (!app.includes('function parseMaterialsCsv')) app = app.replace(marker, additions);
+fs.writeFileSync(appPath, app);
