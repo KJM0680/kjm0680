@@ -1,0 +1,10 @@
+const fs = require('fs');
+const path = require('path');
+const cssPath = path.join(__dirname, '..', 'dist', 'styles.css');
+let css = fs.readFileSync(cssPath, 'utf8');
+const from = '.equipment-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}';
+const to = '.equipment-grid{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(3,auto);grid-auto-flow:column;gap:14px}';
+if (!css.includes(from)) throw new Error('5열 설비 그리드를 찾을 수 없습니다.');
+css = css.replace(from, to);
+css = css.replace('.metrics,.equipment-grid{grid-template-columns:1fr}', '.metrics,.equipment-grid{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}');
+fs.writeFileSync(cssPath, css);
