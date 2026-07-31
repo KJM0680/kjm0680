@@ -1,0 +1,17 @@
+const fs = require('fs');
+const path = require('path');
+const root = path.join(__dirname, '..', 'dist');
+const indexPath = path.join(root, 'index.html');
+let html = fs.readFileSync(indexPath, 'utf8');
+const start = html.indexOf('<section id="sparesView"');
+const marker = '<div class="management-card">';
+const markerAt = html.indexOf(marker, start);
+if (start < 0 || markerAt < 0) throw new Error('예비품 관리 화면을 찾을 수 없습니다.');
+const monitor = '<div class="monitor-grid" data-spare-monitor><button class="monitor-card" data-spare-monitor-key="completed"><span>수리 완료</span><strong data-spare-monitor-value="completed">0</strong><small>클릭하여 수정</small></button><button class="monitor-card" data-spare-monitor-key="progress"><span>수리중</span><strong data-spare-monitor-value="progress">0</strong><small>클릭하여 수정</small></button><button class="monitor-card" data-spare-monitor-key="needed"><span>수리필요</span><strong data-spare-monitor-value="needed">0</strong><small>클릭하여 수정</small></button></div>';
+if (!html.includes('data-spare-monitor')) html = html.slice(0, markerAt) + monitor + html.slice(markerAt);
+fs.writeFileSync(indexPath, html);
+const cssPath = path.join(root, 'styles.css');
+let css = fs.readFileSync(cssPath, 'utf8');
+const extra = '.monitor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}.monitor-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:16px;text-align:left;cursor:pointer;box-shadow:var(--shadow)}.monitor-card:hover{border-color:var(--primary);transform:translateY(-1px)}.monitor-card span,.monitor-card small{display:block;color:var(--muted);font-weight:700}.monitor-card strong{display:block;font-size:30px;margin:6px 0}.monitor-card small{font-size:11px;font-weight:500}@media(max-width:620px){.monitor-grid{grid-template-columns:1fr}}';
+if (!css.includes('.monitor-grid')) css += `\n${extra}`;
+fs.writeFileSync(cssPath, css);
