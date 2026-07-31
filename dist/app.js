@@ -1,5 +1,8 @@
 (() => {
   const KEY = 'stitch-cog-single-app';
+  const SUPABASE_URL = 'https://wsxlhhyqqzwkkkqqjhju.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Tlw90eRRCwTvTL6pPC94lg_EodjcuFh';
+  const db = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
   const seedEquipment = [
     ['1A','Warning',8.4,72],['1B','Normal',2.1,45],['1C','Normal',1.8,42],['2A','Normal',1.7,42],['2B','Warning',3.1,41],['2C','Normal',1.9,44],['3A','Normal',1.4,82],['3B','Normal',1.6,86],['3C','Normal',2,45],['4A','Normal',1.7,41],['4B','Normal',2.4,49],['4C','Normal',2.1,45],['5A','Normal',2.2,46],['5B','Normal',1.9,43],['5C','Normal',2,44]
   ].map(([id,status,vibration,temperature]) => ({ id, name: `설비 ${id}`, status, vibration, temperature }));
@@ -13,7 +16,48 @@
   const $ = (selector, root=document) => root.querySelector(selector);
   const $$ = (selector, root=document) => [...root.querySelectorAll(selector)];
   function loadState(){ try { const saved=JSON.parse(localStorage.getItem(KEY)); return saved?.equipment && saved?.alerts ? {...freshState(),...saved,materials:Array.isArray(saved.materials)?saved.materials:[],spares:Array.isArray(saved.spares)?saved.spares:[],spareMonitor:saved.spareMonitor&&typeof saved.spareMonitor==='object'?{completed:Number(saved.spareMonitor.completed)||0,progress:Number(saved.spareMonitor.progress)||0,needed:Number(saved.spareMonitor.needed)||0}:{completed:0,progress:0,needed:0}} : freshState(); } catch { return freshState(); } }
-  function saveState(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { toast('브라우저 저장 공간을 사용할 수 없습니다.', true); } }
+  function saveState(){ try { localStorage.setItem(KEY, JSON.stringify(state)); void persistState(); } catch { toast('브라우저 저장 공간을 사용할 수 없습니다.', true); } }
+  const remoteRows = {
+    equipment: rows => rows.map(row => ({id:row.id,name:row.name,status:row.status,vibration:row.vibration,temperature:row.temperature,updated_at:new Date().toISOString()})),
+    alerts: rows => rows.map(row => ({id:row.id,equipment_id:row.equipmentId,severity:row.severity,message:row.message,acknowledged_at:row.acknowledgedAt||null})),
+    inspections: rows => rows.map(row => ({id:row.id,equipment_id:row.equipmentId,note:row.note,created_at:row.createdAt||new Date().toISOString()})),
+    materials: rows => rows.map(row => ({id:row.id,name:row.name,quantity:row.quantity,due_date:row.dueDate||null,status:row.status,updated_at:new Date().toISOString()})),
+    spares: rows => rows.map(row => ({id:row.id,name:row.name,quantity:row.quantity,repair_status:row.repairStatus,start_date:row.startDate||null,completed_date:row.completedDate||null,memo:row.memo||'',updated_at:new Date().toISOString()})),
+  };
+  async function persistState(){
+    if(!db) return;
+    const jobs=[
+      state.equipment.length?db.from('equipment').upsert(remoteRows.equipment(state.equipment)):null,
+      state.alerts.length?db.from('alerts').upsert(remoteRows.alerts(state.alerts)):null,
+      state.inspections.length?db.from('inspections').upsert(remoteRows.inspections(state.inspections)):null,
+      state.materials.length?db.from('materials').upsert(remoteRows.materials(state.materials)):null,
+      state.spares.length?db.from('spares').upsert(remoteRows.spares(state.spares)):null,
+      db.from('spare_monitor').upsert(Object.entries(state.spareMonitor||{}).map(([key,value])=>({key,value,updated_at:new Date().toISOString()})))
+    ].filter(Boolean);
+    const results=await Promise.all(jobs); const failure=results.find(result=>result.error);
+    if(failure) console.error('Supabase 저장 오류',failure.error);
+    const syncDeletes=async(table,rows)=>{ const current=new Set(rows.map(row=>row.id)); const existing=await db.from(table).select('id'); if(existing.error) return; const stale=(existing.data||[]).map(row=>row.id).filter(id=>!current.has(id)); if(stale.length) await db.from(table).delete().in('id',stale); };
+    await Promise.all([syncDeletes('equipment',state.equipment),syncDeletes('alerts',state.alerts),syncDeletes('inspections',state.inspections),syncDeletes('materials',state.materials),syncDeletes('spares',state.spares)]);
+  }
+  async function hydrateFromSupabase(){
+    if(!db) return;
+    const [equipment,alerts,inspections,materials,spares,monitor]=await Promise.all([
+      db.from('equipment').select('*').order('id'),db.from('alerts').select('*').order('created_at'),db.from('inspections').select('*').order('created_at'),
+      db.from('materials').select('*').order('due_date',{ascending:false,nullsFirst:false}),db.from('spares').select('*').order('updated_at',{ascending:false}),db.from('spare_monitor').select('*')
+    ]);
+    const failure=[equipment,alerts,inspections,materials,spares,monitor].find(result=>result.error);
+    if(failure){ console.error('Supabase 불러오기 오류',failure.error); toast('서버 데이터를 불러오지 못해 브라우저 저장 데이터를 사용합니다.',true); return; }
+    const localHadData=state.materials.length||state.spares.length||state.inspections.length;
+    if(equipment.data?.length) state.equipment=equipment.data.map(row=>({id:row.id,name:row.name,status:row.status,vibration:Number(row.vibration),temperature:Number(row.temperature)}));
+    if(alerts.data?.length) state.alerts=alerts.data.map(row=>({id:row.id,equipmentId:row.equipment_id,severity:row.severity,message:row.message,acknowledgedAt:row.acknowledged_at}));
+    if(inspections.data?.length) state.inspections=inspections.data.map(row=>({id:row.id,equipmentId:row.equipment_id,note:row.note,createdAt:row.created_at}));
+    if(materials.data?.length) state.materials=materials.data.map(row=>({id:row.id,name:row.name,quantity:Number(row.quantity),dueDate:row.due_date||'',status:row.status}));
+    if(spares.data?.length) state.spares=spares.data.map(row=>({id:row.id,name:row.name,quantity:Number(row.quantity),repairStatus:row.repair_status,startDate:row.start_date||'',completedDate:row.completed_date||'',memo:row.memo||''}));
+    if(monitor.data?.length) state.spareMonitor=Object.fromEntries(monitor.data.map(row=>[row.key,Number(row.value)||0]));
+    localStorage.setItem(KEY,JSON.stringify(state)); render();
+    if(localHadData && !(materials.data?.length||spares.data?.length||inspections.data?.length)) void persistState();
+    toast('Supabase 데이터와 연결되었습니다.');
+  }
   function toast(message,error=false){ const node=document.createElement('div'); node.className=`toast${error?' error':''}`; node.textContent=message; $('[data-toasts]').append(node); setTimeout(()=>node.remove(),3200); }
   function showView(view){ state.view=view; $$('.view').forEach(x=>x.classList.toggle('active-view',x.id===`${view}View`)); $$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view)); render(); }
   function statusClass(status){ return `status-${status.toLowerCase()}`; }
@@ -61,6 +105,7 @@
   document.addEventListener('change',(event)=>{ if(!event.target.matches('[data-csv-upload]')) return; const file=event.target.files?.[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{ const updates=parseEquipmentCsv(String(reader.result||'')); let count=0; updates.forEach(update=>{ const existing=state.equipment.find(item=>item.id===update.id); if(existing){Object.assign(existing,update);count++;} }); if(count){saveState();render();toast(`${count}개 설비 데이터가 업데이트되었습니다.`);} else toast('업데이트할 설비 데이터를 찾지 못했습니다.',true); event.target.value=''; }; reader.readAsText(file,'UTF-8'); });
   $('[data-dialog]').addEventListener('click',(event)=>{ if(event.target === $('[data-dialog]')) $('[data-dialog]').close(); });
   render();
+  void hydrateFromSupabase();
 
 document.addEventListener('submit',(event)=>{ if(event.target.matches('[data-material-form]')){ event.preventDefault(); const data=new FormData(event.target); const name=String(data.get('name')||'').trim(); const quantity=Number(data.get('quantity')); if(!name||!Number.isFinite(quantity)){toast('자재명과 수량을 입력하세요.',true);return;} const id=event.target.dataset.id; const row={name,quantity,dueDate:String(data.get('dueDate')||''),status:String(data.get('status')||'purchasing')}; const existing=state.materials.find(item=>item.id===id); if(existing) Object.assign(existing,row); else state.materials.push({id:`material-${Date.now()}`,...row}); saveState(); $('[data-dialog]').close(); render(); toast('자재를 저장했습니다.'); return; } if(event.target.matches('[data-spare-form]')){ event.preventDefault(); const data=new FormData(event.target); const name=String(data.get('name')||'').trim(); const quantity=Number(data.get('quantity')); if(!name||!Number.isFinite(quantity)){toast('예비품명과 수량을 입력하세요.',true);return;} const id=event.target.dataset.id; const row={name,quantity,repairStatus:String(data.get('repairStatus')||'수리 필요'),startDate:String(data.get('startDate')||''),completedDate:String(data.get('completedDate')||''),memo:String(data.get('memo')||'').trim()}; const existing=state.spares.find(item=>item.id===id); if(existing) Object.assign(existing,row); else state.spares.push({id:`spare-${Date.now()}`,...row}); saveState(); $('[data-dialog]').close(); render(); toast('예비품을 저장했습니다.'); return; } });
 })();
