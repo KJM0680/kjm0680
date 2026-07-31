@@ -1,0 +1,15 @@
+const fs = require('fs');
+const path = require('path');
+const file = path.join(__dirname, '..', 'dist', 'index.html');
+let html = fs.readFileSync(file, 'utf8');
+const alertButton = '<button class="nav-item" data-view="alerts">⚠ <span>알림 센터</span><b data-alert-count></b></button>';
+if (!html.includes(alertButton)) throw new Error('왼쪽 알림센터 메뉴를 찾을 수 없습니다.');
+html = html.replace(alertButton, '');
+const topbarEnd = '</div></header>';
+const topbarButton = '<button class="top-alert-button" data-view="alerts">🔔 알림 센터 <b data-alert-count></b></button>';
+if (!html.includes('class="top-alert-button"')) html = html.replace(topbarEnd, `${topbarButton}</div></header>`);
+fs.writeFileSync(file, html);
+const cssPath = path.join(__dirname, '..', 'dist', 'styles.css');
+let css = fs.readFileSync(cssPath, 'utf8');
+if (!css.includes('.top-alert-button')) css += '\n.top-alert-button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:9px 13px;font:inherit;font-weight:700;cursor:pointer}.top-alert-button:hover{border-color:var(--primary);color:var(--primary)}.top-alert-button b{margin-left:4px;background:var(--danger);color:#fff;border-radius:999px;font-size:11px;padding:1px 6px}';
+fs.writeFileSync(cssPath, css);
