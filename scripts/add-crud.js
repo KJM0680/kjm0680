@@ -1,0 +1,20 @@
+const fs = require('fs');
+const path = require('path');
+const root = path.join(__dirname, '..');
+const appPath = path.join(root, 'dist', 'app.js');
+const snippet = fs.readFileSync(path.join(__dirname, 'crud-snippets.txt'), 'utf8');
+const block = (name) => snippet.match(new RegExp(`/\\*${name}_START\\*/([\\s\\S]*?)/\\*${name}_END\\*/`))[1];
+let app = fs.readFileSync(appPath, 'utf8');
+if (!app.includes('function renderMaterials')) app = app.replace("  function render(){", block('RENDER') + "  function render(){");
+app = app.replace("function render(){ renderMetrics(); renderDashboard(); renderAlerts(); renderMap();", "function render(){ renderMetrics(); renderDashboard(); renderAlerts(); renderMap(); renderMaterials(); renderSpares();");
+const oldMetrics = app.match(/  function renderMetrics\(\)\{.*?\n/)[0];
+const newMetrics = "  function renderMetrics(){ const normal=state.equipment.filter(x=>x.status==='Normal').length; $('[data-metrics]').innerHTML=[['전체 설비',state.equipment.length],['정상 설비',normal],['미확인 알림',state.alerts.filter(x=>!x.acknowledgedAt).length]].map(([label,value])=>`<article class=\"metric\"><span class=\"metric-label\">\${label}</span><strong class=\"metric-value\">\${value}</strong></article>`).join(''); }\n";
+app = app.replace(oldMetrics, newMetrics);
+if (!app.includes('function openMaterialForm')) app = app.replace("  function openInspection()", block('FORMS') + "  function openInspection()");
+const clickAnchor = "const action=target.closest('[data-action]')?.dataset.action;";
+const clickExtra = "const materialEdit=target.closest('[data-material-edit]'); if(materialEdit){openMaterialForm(materialEdit.dataset.materialEdit);return;} const materialDelete=target.closest('[data-material-delete]'); if(materialDelete){state.materials=state.materials.filter(row=>row.id!==materialDelete.dataset.materialDelete);saveState();render();return;} const spareEdit=target.closest('[data-spare-edit]'); if(spareEdit){openSpareForm(spareEdit.dataset.spareEdit);return;} const spareDelete=target.closest('[data-spare-delete]'); if(spareDelete){state.spares=state.spares.filter(row=>row.id!==spareDelete.dataset.spareDelete);saveState();render();return;} ";
+if (!app.includes("target.closest('[data-material-edit]')")) app = app.replace(clickAnchor, clickExtra + clickAnchor);
+app = app.replace("if(action==='csv-upload'){$('[data-csv-upload]').click();return;}", "if(action==='csv-upload'){$('[data-csv-upload]').click();return;} if(action==='material-csv'){$('[data-material-upload]').click();return;} if(action==='spare-csv'){$('[data-spare-upload]').click();return;} if(action==='new-material'){openMaterialForm();return;} if(action==='new-spare'){openSpareForm();return;}");
+if (!app.includes('[data-material-upload]')) app = app.replace("  document.addEventListener('submit'", block('UPLOAD') + "  document.addEventListener('submit'");
+if (!app.includes('[data-material-form]')) { const close=app.lastIndexOf('})();'); app=app.slice(0,close)+`\n${block('SUBMIT')}\n`+app.slice(close); }
+fs.writeFileSync(appPath, app);
