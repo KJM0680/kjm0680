@@ -5,7 +5,7 @@
   const db = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) || null;
   let remoteHydrated = false;
   const seedEquipment = [
-    ['1A','Warning',8.4,72],['1B','Normal',2.1,45],['1C','Normal',1.8,42],['2A','Normal',1.7,42],['2B','Warning',3.1,41],['2C','Normal',1.9,44],['3A','Normal',1.4,82],['3B','Normal',1.6,86],['3C','Normal',2,45],['4A','Normal',1.7,41],['4B','Normal',2.4,49],['4C','Normal',2.1,45],['5A','Normal',2.2,46],['5B','Normal',1.9,43],['5C','Normal',2,44]
+    ['1A','Critical',8.4,72],['1B','Normal',2.1,45],['1C','Normal',1.8,42],['2A','Normal',1.7,42],['2B','Warning',3.1,41],['2C','Normal',1.9,44],['3A','Normal',1.4,82],['3B','Normal',1.6,86],['3C','Normal',2,45],['4A','Normal',1.7,41],['4B','Normal',2.4,49],['4C','Normal',2.1,45],['5A','Normal',2.2,46],['5B','Normal',1.9,43],['5C','Normal',2,44]
   ].map(([id,status,vibration,temperature]) => ({ id, name: `설비 ${id}`, status, vibration, temperature }));
   const seedAlerts = [
     { id:'alert-1', equipmentId:'1A', severity:'Critical', message:'진동 수치가 임계값을 초과했습니다.', acknowledgedAt:null },
