@@ -1,0 +1,14 @@
+const fs = require('fs');
+const path = require('path');
+const root = path.join(__dirname, '..', 'dist');
+let index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+for (const [from, to] of [['LOCAL DEMO','로컬 데모'],['Industrial Control','산업 제어'],['Plant Area 1A','공장 구역 1A'],['FLEET OVERVIEW','설비 현황'],['ALERT CENTER','알림 센터'],['MACHINERY MAP','설비 지도']]) index = index.split(from).join(to);
+fs.writeFileSync(path.join(root, 'index.html'), index);
+let app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+const anchor = 'function statusClass(status){ return `status-${status.toLowerCase()}`; }';
+app = app.replace(anchor, anchor + "\n  function statusLabel(status){ return ({Normal:'정상',Warning:'경고',Caution:'주의',Critical:'위험',Info:'정보'})[status] || status; }");
+for (const [from, to] of [['<span class="eyebrow">EQUIPMENT</span>','<span class="eyebrow">설비</span>'],['SELECTED EQUIPMENT','선택 설비'],['${item.status}</span>','${statusLabel(item.status)}</span>'],['${row.severity}</span>','${statusLabel(row.severity)}</span>'],["${x==='All'?'전체':x}","${x==='All'?'전체':statusLabel(x)}"]]) app = app.split(from).join(to);
+app = app.split('name: `Equipment ${id}`').join('name: `설비 ${id}`');
+app = app.split('<span class="status ${statusClass(selected.status)}">${selected.status}</span>').join('<span class="status ${statusClass(selected.status)}">${statusLabel(selected.status)}</span>');
+app = app.split('<strong>${item.status}</strong>').join('<strong>${statusLabel(item.status)}</strong>');
+fs.writeFileSync(path.join(root, 'app.js'), app);
