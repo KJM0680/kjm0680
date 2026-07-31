@@ -27,3 +27,4 @@ insert into public.equipment (id,name,status,vibration,temperature) values
 on conflict (id) do nothing;
 insert into public.alerts (id,equipment_id,severity,message) values ('alert-1','1A','Critical','진동 수치가 임계값을 초과했습니다.'),('alert-2','3B','Warning','온도 추세를 점검해야 합니다.'),('alert-3','2C','Info','정기 점검 예정 시간이 다가옵니다.') on conflict (id) do nothing;
 insert into public.spare_monitor (key,value) values ('completed',0),('progress',0),('needed',0) on conflict (key) do nothing;
+insert into public.spare_monitor (key,value) values ('material-large-blade',0),('material-small-blade',0),('material-facing-ring',0),('material-retainer-ring',0),('material-bearing',0) on conflict (key) do nothing;
