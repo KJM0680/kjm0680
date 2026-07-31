@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COG Booster · 설비 관리</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar"><div class="brand">COG Booster <span>로컬 데모</span></div><div class="top-actions"><button data-action="notifications" class="icon-button" aria-label="알림">🔔</button><button data-action="settings" class="icon-button" aria-label="설정">⚙</button><button class="top-alert-button" data-view="alerts">🔔 알림 센터 <b data-alert-count></b></button></div></header>
+  <div class="app-shell">
+    <aside class="sidebar"><div class="side-title">산업 제어</div><div class="side-subtitle">공장 구역 1A</div><nav aria-label="주 메뉴"><button class="nav-item active" data-view="dashboard">▦ <span>설비 현황</span></button><button class="nav-item" data-view="materials">▤ <span>자재관리</span></button><button class="nav-item" data-view="spares">⚙ <span>예비품관리</span></button></nav><button class="logout" data-action="reset">샘플 데이터 초기화</button></aside>
+    <main class="content">
+      <section id="dashboardView" class="view active-view" aria-labelledby="dashboardTitle"><div class="page-head"><div><p class="eyebrow">설비 현황</p><h1 id="dashboardTitle">설비 현황</h1><p class="muted">설비 상태를 확인하고 점검을 등록하세요.</p></div><div class="button-row"><button class="button secondary" data-action="prep">준비 시작</button><button class="button secondary" data-action="csv-upload">설비점검 업데이트</button><input type="file" accept=".csv,text/csv" data-csv-upload hidden /><button class="button secondary" data-action="csv-upload">설비점검 업데이트</button><input type="file" accept=".csv,text/csv" data-csv-upload hidden /><button class="button primary" data-action="inspection">점검 등록</button></div></div><div class="metrics" data-metrics></div><div class="section-head"><h2>설비 카드</h2><span class="local-badge">브라우저 저장 모드</span></div><div class="equipment-grid" data-equipment-grid></div></section>
+      <section id="alertsView" class="view" aria-labelledby="alertsTitle"><div class="page-head"><div><p class="eyebrow">알림 센터</p><h1 id="alertsTitle">알림 센터</h1><p class="muted">설비 알림을 확인하고 처리 상태를 관리합니다.</p></div></div><div class="filter-row" data-alert-filters></div><div class="alert-list" data-alert-list></div></section>
+      <section id="mapView" class="view" aria-labelledby="mapTitle"><div class="page-head"><div><p class="eyebrow">설비 지도</p><h1 id="mapTitle">설비 지도</h1><p class="muted">설비를 선택하면 상세 상태를 확인할 수 있습니다.</p></div></div><div class="filter-row" data-map-filters></div><div class="map-layout"><div class="map-canvas" data-map-canvas></div><aside class="map-detail" data-map-detail><p class="empty-state">설비를 선택하세요.</p></aside></div></section>
+
+      <section id="materialsView" class="view" aria-labelledby="materialsTitle"><div class="page-head"><div><p class="eyebrow">자재관리</p><h1 id="materialsTitle">자재관리</h1><p class="muted">구매 중인 자재의 수량과 납기일을 관리합니다.</p></div><div class="button-row"><button class="button secondary" data-action="material-csv">CSV 불러오기</button><input type="file" accept=".csv,text/csv" data-material-upload hidden /><button class="button primary" data-action="new-material">자재 등록</button></div></div><div class="management-card"><div class="table-wrap"><table class="management-table"><thead><tr><th>자재명</th><th>수량</th><th>납기일</th><th>상태</th><th>관리</th></tr></thead><tbody data-material-list></tbody></table></div></div></section>
+      <section id="sparesView" class="view" aria-labelledby="sparesTitle"><div class="page-head"><div><p class="eyebrow">예비품관리</p><h1 id="sparesTitle">예비품관리</h1><p class="muted">수리 상태별 예비품을 등록하고 관리합니다.</p></div><div class="button-row"><button class="button secondary" data-action="spare-csv">CSV 불러오기</button><input type="file" accept=".csv,text/csv" data-spare-upload hidden /><button class="button primary" data-action="new-spare">예비품 등록</button></div></div><div class="monitor-grid" data-spare-monitor><button class="monitor-card" data-spare-monitor-key="completed"><span>수리 완료</span><strong data-spare-monitor-value="completed">0</strong><small>클릭하여 수정</small></button><button class="monitor-card" data-spare-monitor-key="progress"><span>수리중</span><strong data-spare-monitor-value="progress">0</strong><small>클릭하여 수정</small></button><button class="monitor-card" data-spare-monitor-key="needed"><span>수리필요</span><strong data-spare-monitor-value="needed">0</strong><small>클릭하여 수정</small></button></div><div class="management-card"><div class="table-wrap"><table class="management-table"><thead><tr><th>예비품명</th><th>수량</th><th>수리상태</th><th>메모</th><th>관리</th></tr></thead><tbody data-spare-list></tbody></table></div></div></section>
+    </main>
+  </div>
+  <div class="toast-region" data-toasts aria-live="polite"></div>
+  <dialog data-dialog><div class="dialog-head"><h2 data-dialog-title></h2><button class="icon-button" data-action="close-dialog" aria-label="닫기">×</button></div><div data-dialog-body></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
